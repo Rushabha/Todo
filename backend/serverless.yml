@@ -4,6 +4,8 @@ service:
 plugins:
   - serverless-webpack
   - serverless-iam-roles-per-function
+  - serverless-reqvalidator-plugin
+  - serverless-aws-documentation
 
 package:
   individually: true
@@ -24,6 +26,21 @@ provider:
     TODO_INDEX: todos-index-${self:provider.stage}
     IMAGE_BUCKET: todos-images-serverless-${self:provider.stage}
     SIGNED_EXPIRATION: 300
+
+custom:
+  documentation:
+    api:
+      info:
+        version: 1.0
+        title: TODO API
+        description: Serverless application for managing tasks
+    models:
+      - name: CreateRequest
+        contentType: application/json
+        schema: ${file(src/requestSchemas/createRequest.json)}
+      - name: UpdateRequest
+        contentType: application/json
+        schema: ${file(src/requestSchemas/updateRequest.json)}
 
 functions:
 
@@ -64,6 +81,12 @@ functions:
           path: todos
           authorizer: Auth
           cors: true
+          reqValidatorName: ReqBodyValidator
+          documentation:
+            summary: Create Todo
+            description: Create Todo
+            requestModels:
+              application/json: CreateRequest
     iamRoleStatements:
       - Effect: Allow
         Action:
@@ -84,6 +107,13 @@ functions:
           path: todos/{todoId}
           authorizer: Auth
           cors: true
+          reqValidatorName: ReqBodyValidator
+          documentation:
+            summary: Update Todo
+            description: Update Todo
+            requestModels:
+              application/json: UpdateRequest
+  
     iamRoleStatements:
       - Effect: Allow
         Action:
@@ -148,6 +178,16 @@ functions:
 
 resources:
   Resources:
+    # Request Body Validator
+    ReqBodyValidator:
+      Type: AWS::ApiGateway::RequestValidator
+      Properties:
+        Name: request-body-validator
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        ValidateRequestBody: true
+        ValidateRequestParameters: false
+
     # Gateway cors for unauthenticated request
     GatewayResponseDefault4XX:
       Type: AWS::ApiGateway::GatewayResponse
